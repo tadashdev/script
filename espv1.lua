@@ -9,6 +9,7 @@ local ESP_ENABLED = false -- Começa desativado
 local lines = {}
 local aura = {}
 local healthBars = {}
+local nameTags = {} -- Para armazenar as tags de nome
 
 -- Função para ativar/desativar a ESP
 local function toggleESP()
@@ -47,7 +48,20 @@ local function createHealthBar(player)
     end
 end
 
--- Função para atualizar a ESP (linha, aura e barra de vida)
+-- Função para criar a tag de nome
+local function createNameTag(player)
+    if not nameTags[player] then
+        local textLabel = Drawing.new("Text")
+        textLabel.Size = 18
+        textLabel.Color = Color3.fromRGB(255, 255, 255) -- Branco
+        textLabel.Center = true
+        textLabel.Outline = true
+        textLabel.OutlineColor = Color3.fromRGB(0, 0, 0) -- Cor da borda
+        nameTags[player] = textLabel
+    end
+end
+
+-- Função para atualizar a ESP (linha, aura, barra de vida e nome)
 local function updateESP()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") then
@@ -58,6 +72,7 @@ local function updateESP()
             createESP(player)
             createAura(player)
             createHealthBar(player)
+            createNameTag(player) -- Criar a tag de nome
 
             -- Calcula posições na tela
             local screenPosRoot, onScreenRoot = Camera:WorldToViewportPoint(rootPart.Position)
@@ -89,11 +104,17 @@ local function updateESP()
                         0
                     )
                 end
+
+                -- Atualiza a tag de nome (acima da cabeça)
+                nameTags[player].Visible = true
+                nameTags[player].Text = player.Name
+                nameTags[player].Position = Vector2.new(screenPosHead.X, screenPosHead.Y - 20) -- Posição acima da cabeça
             else
                 -- Esconde os elementos se não estiverem na tela ou se ESP estiver desativado
                 lines[player].Visible = false
                 aura[player].Visible = false
                 healthBars[player].Visible = false
+                nameTags[player].Visible = false
             end
         end
     end
@@ -112,6 +133,10 @@ Players.PlayerRemoving:Connect(function(player)
     if healthBars[player] then
         healthBars[player]:Remove()
         healthBars[player] = nil
+    end
+    if nameTags[player] then
+        nameTags[player]:Remove()
+        nameTags[player] = nil
     end
 end)
 
