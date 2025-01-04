@@ -23,12 +23,20 @@ end
 -- Função para ativar o Aimlock para jogadores selecionados
 local function aimLock()
     for _, player in ipairs(selectedPlayers) do
-        if not player.Character or not player.Character:FindFirstChild("Head") then
+        local character = player.Character
+        if not character or not character:FindFirstChild("Head") then
+            continue
+        end
+
+        -- Verificar se o jogador está vivo
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid and humanoid.Health <= 0 then
+            -- Ignorar jogadores mortos
             continue
         end
 
         -- Calcular a distância até a cabeça do jogador selecionado
-        local enemyHead = player.Character.Head
+        local enemyHead = character.Head
         local distance = getDistanceToHead(player)
 
         -- Verificar se o inimigo está dentro do FOV
