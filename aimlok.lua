@@ -7,6 +7,9 @@ local LocalPlayer = Players.LocalPlayer
 local AIM_FOV = 200  -- FOV (distância máxima de alcance do aimlock)
 local AIM_SENSITIVITY = 0.5  -- Sensibilidade do aimlock (ajuste da velocidade)
 
+local selectedPlayers = {}  -- Jogadores atualmente selecionados para o AimLock
+local aimlockEnabled = false -- Controle de ativação do AimLock
+
 -- Função para calcular a distância entre o jogador e o inimigo
 local function getDistanceToHead(player)
     local character = player.Character
@@ -17,41 +20,37 @@ local function getDistanceToHead(player)
     return math.huge -- Retorna um valor infinito se não tiver cabeça
 end
 
--- Função para ativar o Aimlock
+-- Função para ativar o Aimlock para jogadores selecionados
 local function aimLock()
-    local closestPlayer = nil
-    local closestDistance = AIM_FOV  -- Define a distância máxima de visão para o aimlock
-
-    -- Encontrar o inimigo mais próximo dentro do FOV
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-            local distance = getDistanceToHead(player)
-
-            -- Verifica se o inimigo está dentro do FOV e se é o mais próximo
-            if distance <= AIM_FOV and distance < closestDistance then
-                closestPlayer = player
-                closestDistance = distance
-            end
+    for _, player in ipairs(selectedPlayers) do
+        if not player.Character or not player.Character:FindFirstChild("Head") then
+            continue
         end
-    end
 
-    -- Se encontrar um inimigo, ajusta a mira para o Head
-    if closestPlayer then
-        local enemyHead = closestPlayer.Character.Head
-        local directionToEnemy = (enemyHead.Position - Camera.CFrame.Position).unit
-        local aimDirection = Camera.CFrame.Position + directionToEnemy * closestDistance
+        -- Calcular a distância até a cabeça do jogador selecionado
+        local enemyHead = player.Character.Head
+        local distance = getDistanceToHead(player)
 
-        -- Ajuste a posição da câmera para mirar diretamente no Head
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, aimDirection)
+        -- Verificar se o inimigo está dentro do FOV
+        if distance <= AIM_FOV then
+            -- Ajustar a direção da câmera para mirar no Head do inimigo
+            local directionToEnemy = (enemyHead.Position - Camera.CFrame.Position).unit
+            local aimDirection = Camera.CFrame.Position + directionToEnemy * distance
+
+            -- Ajuste a posição da câmera para mirar diretamente no Head
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, aimDirection)
+        end
     end
 end
 
 -- Função que executa o aimlock continuamente
 RunService.RenderStepped:Connect(function()
-    aimLock()
+    if aimlockEnabled then
+        aimLock()
+    end
 end)
 
--- Cria a UI para ativar/desativar o Aimlock
+-- Função para criar a interface de seleção de jogador e ativação/desativação do Aimlock
 local function createAimlockUI()
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "AimlockUI"
@@ -59,7 +58,7 @@ local function createAimlockUI()
 
     -- Frame principal
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(0, 200, 0, 150)
+    Frame.Size = UDim2.new(0, 200, 0, 250)
     Frame.Position = UDim2.new(0, 20, 0, 100)
     Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Frame.BorderSizePixel = 0
@@ -82,23 +81,64 @@ local function createAimlockUI()
     AimlockButton.Position = UDim2.new(0, 5, 0, 40)
     AimlockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     AimlockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    AimlockButton.Text = "Aimlock: ON"
+    AimlockButton.Text = "Aimlock: OFF"
     AimlockButton.Parent = Frame
 
-    local aimlockEnabled = true
+    -- Lista de jogadores
+    local PlayerList = Instance.new("Frame")
+    PlayerList.Size = UDim2.new(1, -10, 0, 120)
+    PlayerList.Position = UDim2.new(0, 5, 0, 80)
+    PlayerList.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    PlayerList.BorderSizePixel = 0
+    PlayerList.Parent = Frame
 
+    local PlayerListLayout = Instance.new("UIListLayout")
+    PlayerListLayout.Padding = UDim.new(0, 5)
+    PlayerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    PlayerListLayout.Parent = PlayerList
+
+    -- Função para atualizar a lista de jogadores
+    local function updatePlayerList()
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                local PlayerButton = Instance.new("TextButton")
+                PlayerButton.Size = UDim2.new(1, 0, 0, 30)
+                PlayerButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+                PlayerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                PlayerButton.Text = player.Name
+                PlayerButton.Parent = PlayerList
+
+                -- Ação ao clicar no jogador
+                PlayerButton.MouseButton1Click:Connect(function()
+                    if table.find(selectedPlayers, player) then
+                        -- Desmarcar jogador
+                        for i, selected in ipairs(selectedPlayers) do
+                            if selected == player then
+                                table.remove(selectedPlayers, i)
+                                break
+                            end
+                        end
+                        PlayerButton.TextColor3 = Color3.fromRGB(255, 0, 0)  -- Vermelho
+                    else
+                        -- Marcar jogador
+                        table.insert(selectedPlayers, player)
+                        PlayerButton.TextColor3 = Color3.fromRGB(0, 255, 0)  -- Verde
+                    end
+                end)
+            end
+        end
+    end
+
+    -- Atualiza a lista de jogadores a cada vez que a lista de jogadores no servidor muda
+    Players.PlayerAdded:Connect(updatePlayerList)
+    updatePlayerList()
+
+    -- Ação ao clicar no botão de Aimlock
     AimlockButton.MouseButton1Click:Connect(function()
         aimlockEnabled = not aimlockEnabled
         AimlockButton.Text = "Aimlock: " .. (aimlockEnabled and "ON" or "OFF")
     end)
-
-    -- Conectar a função de Aimlock com a ativação/desativação
-    RunService.RenderStepped:Connect(function()
-        if aimlockEnabled then
-            aimLock()
-        end
-    end)
 end
 
--- Inicializa a interface de usuário (UI)
+-- Inicializa a interface de usuário (UI) e garante que ela não desapareça
 createAimlockUI()
