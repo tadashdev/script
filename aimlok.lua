@@ -99,6 +99,14 @@ local function createAimlockUI()
 
     -- Função para atualizar a lista de jogadores
     local function updatePlayerList()
+        -- Limpar a lista antes de adicionar novos jogadores
+        for _, child in ipairs(PlayerList:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+
+        -- Atualizar com os jogadores atuais
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
                 local PlayerButton = Instance.new("TextButton")
@@ -131,6 +139,9 @@ local function createAimlockUI()
 
     -- Atualiza a lista de jogadores a cada vez que a lista de jogadores no servidor muda
     Players.PlayerAdded:Connect(updatePlayerList)
+    Players.PlayerRemoving:Connect(updatePlayerList)
+
+    -- Inicializar a lista
     updatePlayerList()
 
     -- Ação ao clicar no botão de Aimlock
