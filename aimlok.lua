@@ -52,6 +52,7 @@ end)
 
 -- Função para criar a interface de seleção de jogador e ativação/desativação do Aimlock
 local function createAimlockUI()
+    -- Cria a interface no PlayerGui do jogador
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "AimlockUI"
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -81,7 +82,7 @@ local function createAimlockUI()
     AimlockButton.Position = UDim2.new(0, 5, 0, 40)
     AimlockButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     AimlockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    AimlockButton.Text = "Aimlock: OFF"
+    AimlockButton.Text = aimlockEnabled and "Aimlock: ON" or "Aimlock: OFF"
     AimlockButton.Parent = Frame
 
     -- Lista de jogadores
@@ -147,9 +148,27 @@ local function createAimlockUI()
     -- Ação ao clicar no botão de Aimlock
     AimlockButton.MouseButton1Click:Connect(function()
         aimlockEnabled = not aimlockEnabled
-        AimlockButton.Text = "Aimlock: " .. (aimlockEnabled and "ON" or "OFF")
+        AimlockButton.Text = aimlockEnabled and "Aimlock: ON" or "Aimlock: OFF"
     end)
 end
 
--- Inicializa a interface de usuário (UI) e garante que ela não desapareça
-createAimlockUI()
+-- Função para reexecutar o layout e manter as opções
+local function reexecuteLayout()
+    -- Verificar se o layout já está ativo, caso contrário criar
+    if not LocalPlayer.PlayerGui:FindFirstChild("AimlockUI") then
+        createAimlockUI()
+    end
+end
+
+-- Reexecutar layout sempre que necessário
+game:GetService("RunService").Heartbeat:Connect(function()
+    reexecuteLayout()
+end)
+
+-- Criar o layout na inicialização do jogo
+reexecuteLayout()
+
+-- Impedir que o layout desapareça ao mudar para a partida
+game:BindToClose(function()
+    -- Não fazer nada aqui para evitar que o layout desapareça ao fechar o jogo
+end)
